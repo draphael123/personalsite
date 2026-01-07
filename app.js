@@ -105,6 +105,7 @@ const activities = [
 // State management
 let currentFilter = 'all';
 let interests = {};
+let userSuggestions = [];
 
 // Confetti colors
 const confettiColors = ['#ff2e97', '#00f5d4', '#fee440', '#9b5de5', '#00bbf9', '#ff9f1c', '#00f593'];
@@ -319,5 +320,148 @@ function init() {
     document.querySelector('.filter-buttons').addEventListener('click', handleFilterClick);
 }
 
+// Category emoji mapping
+const categoryEmojis = {
+    'Outdoor': '🌲',
+    'Creative': '🎨',
+    'Fitness': '💪',
+    'Entertainment': '🎬',
+    'Nature': '🌿',
+    'Culinary': '🍳',
+    'Music': '🎵',
+    'Crafts': '✂️',
+    'Adventure': '🏔️',
+    'Sports': '⚽',
+    'Social': '👥',
+    'Wellness': '🧘',
+    'Technology': '💻',
+    'Education': '📚',
+    'Collecting': '🏆',
+    'Mental': '🧠',
+    'Skills': '🔧',
+    'Relaxation': '😌',
+    'Strategy': '♟️',
+    'Science': '🔬'
+};
+
+// Load suggestions from localStorage
+function loadSuggestions() {
+    const saved = localStorage.getItem('userSuggestions');
+    if (saved) {
+        userSuggestions = JSON.parse(saved);
+        renderSuggestions();
+    }
+}
+
+// Save suggestions to localStorage
+function saveSuggestions() {
+    localStorage.setItem('userSuggestions', JSON.stringify(userSuggestions));
+}
+
+// Render suggestions list
+function renderSuggestions() {
+    const container = document.getElementById('user-suggestions');
+    const listSection = document.getElementById('suggestions-list');
+    
+    if (userSuggestions.length === 0) {
+        listSection.classList.remove('has-suggestions');
+        container.innerHTML = '';
+        return;
+    }
+    
+    listSection.classList.add('has-suggestions');
+    
+    container.innerHTML = userSuggestions.map((suggestion, index) => `
+        <div class="suggestion-tag">
+            <span class="tag-emoji">${categoryEmojis[suggestion.category] || '✨'}</span>
+            <span class="tag-name">${suggestion.name}</span>
+            <span class="tag-category">${suggestion.category}</span>
+            <button class="remove-btn" data-index="${index}" title="Remove">×</button>
+        </div>
+    `).join('');
+}
+
+// Show success message
+function showSuccessMessage(message) {
+    // Remove existing message if any
+    const existing = document.querySelector('.success-message');
+    if (existing) existing.remove();
+    
+    const msg = document.createElement('div');
+    msg.className = 'success-message';
+    msg.textContent = message;
+    document.body.appendChild(msg);
+    
+    // Trigger animation
+    setTimeout(() => msg.classList.add('show'), 10);
+    
+    // Remove after delay
+    setTimeout(() => {
+        msg.classList.remove('show');
+        setTimeout(() => msg.remove(), 400);
+    }, 3000);
+}
+
+// Handle suggestion form submit
+function handleSuggestionSubmit(e) {
+    e.preventDefault();
+    
+    const nameInput = document.getElementById('activity-name');
+    const categorySelect = document.getElementById('activity-category');
+    
+    const name = nameInput.value.trim();
+    const category = categorySelect.value;
+    
+    if (!name || !category) return;
+    
+    // Check for duplicates
+    const isDuplicate = userSuggestions.some(s => 
+        s.name.toLowerCase() === name.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+        showSuccessMessage('⚠️ This activity is already in your suggestions!');
+        return;
+    }
+    
+    // Add suggestion
+    userSuggestions.push({ name, category });
+    saveSuggestions();
+    renderSuggestions();
+    
+    // Create confetti at button
+    const btn = document.querySelector('.submit-btn');
+    const rect = btn.getBoundingClientRect();
+    createConfetti(rect.left + rect.width / 2, rect.top);
+    
+    // Show success message
+    showSuccessMessage(`✨ "${name}" added to suggestions!`);
+    
+    // Reset form
+    nameInput.value = '';
+    categorySelect.value = '';
+}
+
+// Handle suggestion removal
+function handleSuggestionRemove(e) {
+    if (!e.target.classList.contains('remove-btn')) return;
+    
+    const index = parseInt(e.target.dataset.index);
+    const removed = userSuggestions[index];
+    
+    userSuggestions.splice(index, 1);
+    saveSuggestions();
+    renderSuggestions();
+    
+    showSuccessMessage(`🗑️ "${removed.name}" removed`);
+}
+
 // Start the app
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    loadSuggestions();
+    
+    // Suggestion form handlers
+    document.getElementById('suggestion-form').addEventListener('submit', handleSuggestionSubmit);
+    document.getElementById('user-suggestions').addEventListener('click', handleSuggestionRemove);
+});
