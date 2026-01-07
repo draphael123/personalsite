@@ -1,0 +1,367 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-deep: #1a1612;
+    --bg-card: #252019;
+    --bg-card-hover: #2d2620;
+    --accent-gold: #d4a853;
+    --accent-coral: #e07a5f;
+    --accent-sage: #81b29a;
+    --accent-blue: #6b9ac4;
+    --text-primary: #f4f1eb;
+    --text-secondary: #a89f91;
+    --text-muted: #6d635a;
+    --border-subtle: rgba(212, 168, 83, 0.15);
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 30px rgba(212, 168, 83, 0.1);
+}
+
+body {
+    font-family: 'Source Sans 3', -apple-system, sans-serif;
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.background-pattern {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(ellipse at 20% 20%, rgba(212, 168, 83, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(129, 178, 154, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(224, 122, 95, 0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+header {
+    text-align: center;
+    padding: 4rem 2rem 3rem;
+    position: relative;
+    z-index: 1;
+}
+
+header h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 700;
+    color: var(--accent-gold);
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 20px rgba(212, 168, 83, 0.3);
+    animation: fadeInDown 0.8s ease-out;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+    font-weight: 400;
+    animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Filters Section */
+.filters {
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+.filters h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.3rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+}
+
+.filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 50px;
+    color: var(--text-secondary);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-gold);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, rgba(212, 168, 83, 0.2), rgba(212, 168, 83, 0.1));
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.filter-icon {
+    font-size: 1rem;
+}
+
+.count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.filter-btn.active .count {
+    background: rgba(212, 168, 83, 0.3);
+}
+
+/* Activities Grid */
+.activities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.activity-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.5s ease-out both;
+    position: relative;
+    overflow: hidden;
+}
+
+.activity-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.activity-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212, 168, 83, 0.3);
+    box-shadow: var(--shadow-soft), var(--shadow-glow);
+}
+
+.activity-card:hover::before {
+    opacity: 1;
+}
+
+.activity-card.hidden {
+    display: none;
+}
+
+.activity-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.activity-emoji {
+    font-size: 2rem;
+    line-height: 1;
+    filter: grayscale(0.2);
+}
+
+.activity-name {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.activity-category {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.25rem;
+}
+
+/* Interest Buttons */
+.interest-options {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.interest-btn {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.interest-btn:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.interest-btn .icon {
+    font-size: 1.1rem;
+}
+
+.interest-btn.selected {
+    transform: scale(1.02);
+}
+
+.interest-btn[data-interest="interested"].selected {
+    background: linear-gradient(135deg, rgba(129, 178, 154, 0.25), rgba(129, 178, 154, 0.1));
+    border-color: var(--accent-sage);
+    color: var(--accent-sage);
+}
+
+.interest-btn[data-interest="maybe"].selected {
+    background: linear-gradient(135deg, rgba(107, 154, 196, 0.25), rgba(107, 154, 196, 0.1));
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.interest-btn[data-interest="not-interested"].selected {
+    background: linear-gradient(135deg, rgba(224, 122, 95, 0.25), rgba(224, 122, 95, 0.1));
+    border-color: var(--accent-coral);
+    color: var(--accent-coral);
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stagger animation for cards */
+.activity-card:nth-child(1) { animation-delay: 0.05s; }
+.activity-card:nth-child(2) { animation-delay: 0.1s; }
+.activity-card:nth-child(3) { animation-delay: 0.15s; }
+.activity-card:nth-child(4) { animation-delay: 0.2s; }
+.activity-card:nth-child(5) { animation-delay: 0.25s; }
+.activity-card:nth-child(6) { animation-delay: 0.3s; }
+.activity-card:nth-child(7) { animation-delay: 0.35s; }
+.activity-card:nth-child(8) { animation-delay: 0.4s; }
+.activity-card:nth-child(9) { animation-delay: 0.45s; }
+.activity-card:nth-child(10) { animation-delay: 0.5s; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    header {
+        padding: 3rem 1.5rem 2rem;
+    }
+
+    main {
+        padding: 0 1rem 3rem;
+    }
+
+    .filter-buttons {
+        gap: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .activities-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .activity-card {
+        padding: 1.25rem;
+    }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-deep);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bg-card-hover);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
