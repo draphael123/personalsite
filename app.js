@@ -231,6 +231,7 @@ const categoryInfo = {
 
 // State management
 let currentFilter = 'all';
+let currentCategoryFilter = 'all'; // New category filter
 let interests = {}; // Now keyed by activity NAME, not index
 let userSuggestions = [];
 
@@ -388,6 +389,48 @@ function createCategoryHeader(category) {
     `;
 }
 
+// Helper to convert hex to RGB
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
+}
+
+// Render category filter buttons
+function renderCategoryFilters() {
+    const container = document.getElementById('category-filter-buttons');
+    const categories = Object.keys(categoryInfo).sort((a, b) => categoryInfo[a].order - categoryInfo[b].order);
+    
+    // Count activities per category
+    const categoryCounts = {};
+    activities.forEach(a => {
+        categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+    });
+    
+    let html = `
+        <button class="category-filter-btn active" data-category="all" style="--cat-color: #9b5de5; --cat-rgb: 155, 93, 229">
+            <span class="cat-emoji">🌈</span>
+            All Categories
+            <span class="cat-count">${activities.length}</span>
+        </button>
+    `;
+    
+    categories.forEach(category => {
+        const info = categoryInfo[category];
+        const count = categoryCounts[category] || 0;
+        if (count > 0) {
+            html += `
+                <button class="category-filter-btn" data-category="${category}" style="--cat-color: ${info.color}; --cat-rgb: ${hexToRgb(info.color)}">
+                    <span class="cat-emoji">${info.emoji}</span>
+                    ${category}
+                    <span class="cat-count">${count}</span>
+                </button>
+            `;
+        }
+    });
+    
+    container.innerHTML = html;
+}
+
 // Render all activity cards grouped by category
 function renderActivities() {
     const grid = document.getElementById('activities-grid');
@@ -452,7 +495,7 @@ function updateCounts() {
     updateCategoryCounts();
 }
 
-// Apply current filter
+// Apply current filter (both interest and category)
 function applyFilter() {
     const cards = document.querySelectorAll('.activity-card');
     const categoryHeaders = document.querySelectorAll('.category-header');
@@ -460,29 +503,34 @@ function applyFilter() {
     
     cards.forEach(card => {
         const activityName = card.dataset.name;
+        const activityCategory = card.dataset.category;
         const interest = interests[activityName] || '';
         
-        let show = false;
-        
+        // Check interest filter
+        let showByInterest = false;
         switch (currentFilter) {
             case 'all':
-                show = true;
+                showByInterest = true;
                 break;
             case 'interested':
-                show = interest === 'interested';
+                showByInterest = interest === 'interested';
                 break;
             case 'maybe':
-                show = interest === 'maybe';
+                showByInterest = interest === 'maybe';
                 break;
             case 'not-interested':
-                show = interest === 'not-interested';
+                showByInterest = interest === 'not-interested';
                 break;
             case 'unmarked':
-                show = !interest;
+                showByInterest = !interest;
                 break;
         }
         
-        card.classList.toggle('hidden', !show);
+        // Check category filter
+        let showByCategory = currentCategoryFilter === 'all' || activityCategory === currentCategoryFilter;
+        
+        // Show only if both filters pass
+        card.classList.toggle('hidden', !(showByInterest && showByCategory));
     });
     
     // Hide empty category sections
@@ -491,7 +539,10 @@ function applyFilter() {
         const category = group.dataset.category;
         const header = document.querySelector(`.category-header[data-category="${category}"]`);
         
-        if (visibleCards.length === 0) {
+        // Also check if category matches the category filter
+        const categoryMatches = currentCategoryFilter === 'all' || category === currentCategoryFilter;
+        
+        if (visibleCards.length === 0 || !categoryMatches) {
             group.classList.add('hidden');
             if (header) header.classList.add('hidden');
         } else {
@@ -538,7 +589,7 @@ function handleInterestClick(e) {
     applyFilter();
 }
 
-// Handle filter button click
+// Handle interest filter button click
 function handleFilterClick(e) {
     const btn = e.target.closest('.filter-btn');
     if (!btn) return;
@@ -551,15 +602,30 @@ function handleFilterClick(e) {
     applyFilter();
 }
 
+// Handle category filter button click
+function handleCategoryFilterClick(e) {
+    const btn = e.target.closest('.category-filter-btn');
+    if (!btn) return;
+
+    // Update active state
+    document.querySelectorAll('.category-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    currentCategoryFilter = btn.dataset.category;
+    applyFilter();
+}
+
 // Initialize
 function init() {
     loadInterests();
+    renderCategoryFilters();
     renderActivities();
     updateCounts();
     
     // Event listeners
     document.getElementById('activities-grid').addEventListener('click', handleInterestClick);
     document.querySelector('.filter-buttons').addEventListener('click', handleFilterClick);
+    document.getElementById('category-filter-buttons').addEventListener('click', handleCategoryFilterClick);
 }
 
 // Category emoji mapping for suggestions

@@ -290,6 +290,95 @@ main {
     text-align: center;
 }
 
+/* Category Filters Section */
+.category-filters {
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.8s ease-out 0.5s both;
+}
+
+.category-filters h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.4rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.category-filters h2::before {
+    content: '📂';
+    font-size: 1.2em;
+}
+
+.category-filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.category-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    color: var(--text-secondary);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.category-filter-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.4s;
+}
+
+.category-filter-btn:hover::before {
+    left: 100%;
+}
+
+.category-filter-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.category-filter-btn.active {
+    background: rgba(var(--cat-rgb), 0.2);
+    border-color: var(--cat-color);
+    color: var(--cat-color);
+    box-shadow: 0 0 20px rgba(var(--cat-rgb), 0.4);
+}
+
+.category-filter-btn .cat-emoji {
+    font-size: 1.1rem;
+}
+
+.category-filter-btn .cat-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.category-filter-btn.active .cat-count {
+    background: rgba(var(--cat-rgb), 0.3);
+}
+
 /* Category Headers */
 .category-header {
     display: flex;
