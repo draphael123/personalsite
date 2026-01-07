@@ -102,42 +102,97 @@ const activities = [
     { name: "Bullet Journaling", emoji: "📔", category: "Creative" }
 ];
 
+// Category order and info
+const categoryInfo = {
+    'Sports': { emoji: '🏆', color: '#ff6b6b', order: 1 },
+    'Outdoor': { emoji: '🌲', color: '#00f5d4', order: 2 },
+    'Adventure': { emoji: '🏔️', color: '#00bbf9', order: 3 },
+    'Fitness': { emoji: '💪', color: '#00f593', order: 4 },
+    'Nature': { emoji: '🌿', color: '#7bed9f', order: 5 },
+    'Creative': { emoji: '🎨', color: '#ff2e97', order: 6 },
+    'Music': { emoji: '🎵', color: '#9b5de5', order: 7 },
+    'Crafts': { emoji: '✂️', color: '#f15bb5', order: 8 },
+    'Culinary': { emoji: '🍳', color: '#ff9f1c', order: 9 },
+    'Entertainment': { emoji: '🎬', color: '#fee440', order: 10 },
+    'Social': { emoji: '👥', color: '#feca57', order: 11 },
+    'Wellness': { emoji: '🧘', color: '#a29bfe', order: 12 },
+    'Mental': { emoji: '🧠', color: '#74b9ff', order: 13 },
+    'Technology': { emoji: '💻', color: '#00cec9', order: 14 },
+    'Education': { emoji: '📚', color: '#fd79a8', order: 15 },
+    'Science': { emoji: '🔬', color: '#81ecec', order: 16 },
+    'Strategy': { emoji: '♟️', color: '#b2bec3', order: 17 },
+    'Collecting': { emoji: '🏆', color: '#e17055', order: 18 },
+    'Skills': { emoji: '🔧', color: '#fdcb6e', order: 19 },
+    'Relaxation': { emoji: '😌', color: '#dfe6e9', order: 20 }
+};
+
 // State management
 let currentFilter = 'all';
 let interests = {};
 let userSuggestions = [];
 
+// Create a mapping from activity name to original index for preserving interests
+const activityNameToIndex = {};
+activities.forEach((activity, index) => {
+    activityNameToIndex[activity.name] = index;
+});
+
+// Sort activities by category
+function getSortedActivities() {
+    return [...activities].sort((a, b) => {
+        const orderA = categoryInfo[a.category]?.order || 99;
+        const orderB = categoryInfo[b.category]?.order || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+    });
+}
+
+// Group activities by category
+function getGroupedActivities() {
+    const sorted = getSortedActivities();
+    const groups = {};
+    
+    sorted.forEach(activity => {
+        if (!groups[activity.category]) {
+            groups[activity.category] = [];
+        }
+        groups[activity.category].push(activity);
+    });
+    
+    return groups;
+}
+
 // Confetti colors
-const confettiColors = ['#ff2e97', '#00f5d4', '#fee440', '#9b5de5', '#00bbf9', '#ff9f1c', '#00f593'];
+const confettiColors = ['#ff2e97', '#00f5d4', '#fee440', '#9b5de5', '#00bbf9', '#ff9f1c', '#00f593', '#ff6b6b', '#feca57', '#a29bfe'];
 
 // Create confetti effect
 function createConfetti(x, y) {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
         const particle = document.createElement('div');
         particle.className = 'confetti-particle';
         particle.style.left = x + 'px';
         particle.style.top = y + 'px';
         particle.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
         particle.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-        particle.style.width = (Math.random() * 8 + 4) + 'px';
-        particle.style.height = (Math.random() * 8 + 4) + 'px';
+        particle.style.width = (Math.random() * 10 + 5) + 'px';
+        particle.style.height = (Math.random() * 10 + 5) + 'px';
         
         const angle = (Math.random() * 360) * (Math.PI / 180);
-        const velocity = Math.random() * 100 + 50;
+        const velocity = Math.random() * 120 + 60;
         const vx = Math.cos(angle) * velocity;
         const vy = Math.sin(angle) * velocity;
         
         particle.animate([
             { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
-            { transform: `translate(${vx}px, ${vy - 100}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+            { transform: `translate(${vx}px, ${vy - 120}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
         ], {
-            duration: 800 + Math.random() * 400,
+            duration: 900 + Math.random() * 500,
             easing: 'cubic-bezier(0, 0.5, 0.5, 1)'
         });
         
         document.body.appendChild(particle);
         
-        setTimeout(() => particle.remove(), 1200);
+        setTimeout(() => particle.remove(), 1400);
     }
 }
 
@@ -155,36 +210,40 @@ function saveInterests() {
 }
 
 // Create activity card HTML
-function createActivityCard(activity, index) {
-    const interest = interests[index] || '';
+function createActivityCard(activity) {
+    const originalIndex = activityNameToIndex[activity.name];
+    const interest = interests[originalIndex] || '';
+    const catInfo = categoryInfo[activity.category];
     
     return `
-        <div class="activity-card" data-index="${index}" data-interest="${interest}" data-category="${activity.category}">
+        <div class="activity-card" data-index="${originalIndex}" data-interest="${interest}" data-category="${activity.category}">
             <div class="activity-header">
                 <span class="activity-emoji">${activity.emoji}</span>
                 <div>
                     <div class="activity-name">${activity.name}</div>
-                    <div class="activity-category">${activity.category}</div>
+                    <div class="activity-category" style="border-color: ${catInfo?.color || '#fff'}40; color: ${catInfo?.color || '#fff'}">
+                        ${activity.category}
+                    </div>
                 </div>
             </div>
             <div class="interest-options">
                 <button class="interest-btn ${interest === 'interested' ? 'selected' : ''}" 
                         data-interest="interested" 
-                        data-index="${index}"
+                        data-index="${originalIndex}"
                         title="Interested">
                     <span class="icon">💚</span>
                     Yes!
                 </button>
                 <button class="interest-btn ${interest === 'maybe' ? 'selected' : ''}" 
                         data-interest="maybe" 
-                        data-index="${index}"
+                        data-index="${originalIndex}"
                         title="Maybe">
                     <span class="icon">🤔</span>
                     Maybe
                 </button>
                 <button class="interest-btn ${interest === 'not-interested' ? 'selected' : ''}" 
                         data-interest="not-interested" 
-                        data-index="${index}"
+                        data-index="${originalIndex}"
                         title="Not Interested">
                     <span class="icon">💔</span>
                     Nope
@@ -194,11 +253,52 @@ function createActivityCard(activity, index) {
     `;
 }
 
-// Render all activity cards
+// Create category header
+function createCategoryHeader(category) {
+    const info = categoryInfo[category];
+    return `
+        <div class="category-header" data-category="${category}" style="--cat-color: ${info?.color || '#fff'}">
+            <span class="category-emoji">${info?.emoji || '📌'}</span>
+            <h2 class="category-title">${category}</h2>
+            <span class="category-count" id="count-${category.toLowerCase().replace(/\s+/g, '-')}">0</span>
+        </div>
+    `;
+}
+
+// Render all activity cards grouped by category
 function renderActivities() {
     const grid = document.getElementById('activities-grid');
-    grid.innerHTML = activities.map((activity, index) => createActivityCard(activity, index)).join('');
+    const grouped = getGroupedActivities();
+    
+    let html = '';
+    
+    Object.entries(grouped).forEach(([category, categoryActivities]) => {
+        html += createCategoryHeader(category);
+        html += `<div class="category-activities" data-category="${category}">`;
+        categoryActivities.forEach(activity => {
+            html += createActivityCard(activity);
+        });
+        html += '</div>';
+    });
+    
+    grid.innerHTML = html;
     applyFilter();
+    updateCategoryCounts();
+}
+
+// Update category counts
+function updateCategoryCounts() {
+    const grouped = getGroupedActivities();
+    
+    Object.entries(grouped).forEach(([category, categoryActivities]) => {
+        const countEl = document.getElementById(`count-${category.toLowerCase().replace(/\s+/g, '-')}`);
+        if (countEl) {
+            const interestedCount = categoryActivities.filter(a => 
+                interests[activityNameToIndex[a.name]] === 'interested'
+            ).length;
+            countEl.textContent = `${interestedCount}/${categoryActivities.length}`;
+        }
+    });
 }
 
 // Update counts
@@ -225,11 +325,15 @@ function updateCounts() {
     document.getElementById('count-maybe').textContent = counts.maybe;
     document.getElementById('count-not-interested').textContent = counts['not-interested'];
     document.getElementById('count-unmarked').textContent = counts.unmarked;
+    
+    updateCategoryCounts();
 }
 
 // Apply current filter
 function applyFilter() {
     const cards = document.querySelectorAll('.activity-card');
+    const categoryHeaders = document.querySelectorAll('.category-header');
+    const categoryGroups = document.querySelectorAll('.category-activities');
     
     cards.forEach(card => {
         const index = card.dataset.index;
@@ -256,6 +360,21 @@ function applyFilter() {
         }
         
         card.classList.toggle('hidden', !show);
+    });
+    
+    // Hide empty category sections
+    categoryGroups.forEach(group => {
+        const visibleCards = group.querySelectorAll('.activity-card:not(.hidden)');
+        const category = group.dataset.category;
+        const header = document.querySelector(`.category-header[data-category="${category}"]`);
+        
+        if (visibleCards.length === 0) {
+            group.classList.add('hidden');
+            if (header) header.classList.add('hidden');
+        } else {
+            group.classList.remove('hidden');
+            if (header) header.classList.remove('hidden');
+        }
     });
 }
 
@@ -320,7 +439,7 @@ function init() {
     document.querySelector('.filter-buttons').addEventListener('click', handleFilterClick);
 }
 
-// Category emoji mapping
+// Category emoji mapping for suggestions
 const categoryEmojis = {
     'Outdoor': '🌲',
     'Creative': '🎨',
