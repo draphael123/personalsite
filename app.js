@@ -231,14 +231,37 @@ const categoryInfo = {
 
 // State management
 let currentFilter = 'all';
-let interests = {};
+let interests = {}; // Now keyed by activity NAME, not index
 let userSuggestions = [];
 
-// Create a mapping from activity name to original index for preserving interests
-const activityNameToIndex = {};
-activities.forEach((activity, index) => {
-    activityNameToIndex[activity.name] = index;
-});
+// Migration: Convert old index-based interests to name-based interests
+function migrateInterests() {
+    const saved = localStorage.getItem('leisureInterests');
+    if (!saved) return;
+    
+    const oldInterests = JSON.parse(saved);
+    const hasNumericKeys = Object.keys(oldInterests).some(key => !isNaN(parseInt(key)));
+    
+    if (hasNumericKeys) {
+        // Old format detected - migrate to name-based
+        const newInterests = {};
+        Object.entries(oldInterests).forEach(([key, value]) => {
+            const index = parseInt(key);
+            if (!isNaN(index) && activities[index]) {
+                // Map old index to activity name
+                newInterests[activities[index].name] = value;
+            } else if (isNaN(index)) {
+                // Already a name key, keep it
+                newInterests[key] = value;
+            }
+        });
+        interests = newInterests;
+        saveInterests(); // Save in new format
+        console.log('✅ Migrated interests to name-based storage');
+    } else {
+        interests = oldInterests;
+    }
+}
 
 // Sort activities by category
 function getSortedActivities() {
@@ -301,10 +324,7 @@ function createConfetti(x, y) {
 
 // Load saved interests from localStorage
 function loadInterests() {
-    const saved = localStorage.getItem('leisureInterests');
-    if (saved) {
-        interests = JSON.parse(saved);
-    }
+    migrateInterests(); // Handle migration from old format
 }
 
 // Save interests to localStorage
@@ -314,12 +334,12 @@ function saveInterests() {
 
 // Create activity card HTML
 function createActivityCard(activity) {
-    const originalIndex = activityNameToIndex[activity.name];
-    const interest = interests[originalIndex] || '';
+    const activityName = activity.name;
+    const interest = interests[activityName] || '';
     const catInfo = categoryInfo[activity.category];
     
     return `
-        <div class="activity-card" data-index="${originalIndex}" data-interest="${interest}" data-category="${activity.category}">
+        <div class="activity-card" data-name="${activityName}" data-interest="${interest}" data-category="${activity.category}">
             <div class="activity-header">
                 <span class="activity-emoji">${activity.emoji}</span>
                 <div>
@@ -332,21 +352,21 @@ function createActivityCard(activity) {
             <div class="interest-options">
                 <button class="interest-btn ${interest === 'interested' ? 'selected' : ''}" 
                         data-interest="interested" 
-                        data-index="${originalIndex}"
+                        data-name="${activityName}"
                         title="Interested">
                     <span class="icon">💚</span>
                     Yes!
                 </button>
                 <button class="interest-btn ${interest === 'maybe' ? 'selected' : ''}" 
                         data-interest="maybe" 
-                        data-index="${originalIndex}"
+                        data-name="${activityName}"
                         title="Maybe">
                     <span class="icon">🤔</span>
                     Maybe
                 </button>
                 <button class="interest-btn ${interest === 'not-interested' ? 'selected' : ''}" 
                         data-interest="not-interested" 
-                        data-index="${originalIndex}"
+                        data-name="${activityName}"
                         title="Not Interested">
                     <span class="icon">💔</span>
                     Nope
@@ -397,7 +417,7 @@ function updateCategoryCounts() {
         const countEl = document.getElementById(`count-${category.toLowerCase().replace(/\s+/g, '-')}`);
         if (countEl) {
             const interestedCount = categoryActivities.filter(a => 
-                interests[activityNameToIndex[a.name]] === 'interested'
+                interests[a.name] === 'interested'
             ).length;
             countEl.textContent = `${interestedCount}/${categoryActivities.length}`;
         }
@@ -414,8 +434,8 @@ function updateCounts() {
         unmarked: 0
     };
 
-    activities.forEach((_, index) => {
-        const interest = interests[index];
+    activities.forEach((activity) => {
+        const interest = interests[activity.name];
         if (interest) {
             counts[interest]++;
         } else {
@@ -439,8 +459,8 @@ function applyFilter() {
     const categoryGroups = document.querySelectorAll('.category-activities');
     
     cards.forEach(card => {
-        const index = card.dataset.index;
-        const interest = interests[index] || '';
+        const activityName = card.dataset.name;
+        const interest = interests[activityName] || '';
         
         let show = false;
         
@@ -486,16 +506,16 @@ function handleInterestClick(e) {
     const btn = e.target.closest('.interest-btn');
     if (!btn) return;
 
-    const index = btn.dataset.index;
+    const activityName = btn.dataset.name;
     const interest = btn.dataset.interest;
     const card = btn.closest('.activity-card');
-    const wasSelected = interests[index] === interest;
+    const wasSelected = interests[activityName] === interest;
     
     // Toggle: if already selected, unselect it
     if (wasSelected) {
-        delete interests[index];
+        delete interests[activityName];
     } else {
-        interests[index] = interest;
+        interests[activityName] = interest;
         
         // Confetti for positive selections!
         if (interest === 'interested') {
@@ -507,11 +527,11 @@ function handleInterestClick(e) {
     // Update button states
     const buttons = card.querySelectorAll('.interest-btn');
     buttons.forEach(b => {
-        b.classList.toggle('selected', b.dataset.interest === interests[index]);
+        b.classList.toggle('selected', b.dataset.interest === interests[activityName]);
     });
     
     // Update card data attribute
-    card.dataset.interest = interests[index] || '';
+    card.dataset.interest = interests[activityName] || '';
     
     saveInterests();
     updateCounts();
