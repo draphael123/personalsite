@@ -106,6 +106,40 @@ const activities = [
 let currentFilter = 'all';
 let interests = {};
 
+// Confetti colors
+const confettiColors = ['#ff2e97', '#00f5d4', '#fee440', '#9b5de5', '#00bbf9', '#ff9f1c', '#00f593'];
+
+// Create confetti effect
+function createConfetti(x, y) {
+    for (let i = 0; i < 12; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'confetti-particle';
+        particle.style.left = x + 'px';
+        particle.style.top = y + 'px';
+        particle.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+        particle.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        particle.style.width = (Math.random() * 8 + 4) + 'px';
+        particle.style.height = (Math.random() * 8 + 4) + 'px';
+        
+        const angle = (Math.random() * 360) * (Math.PI / 180);
+        const velocity = Math.random() * 100 + 50;
+        const vx = Math.cos(angle) * velocity;
+        const vy = Math.sin(angle) * velocity;
+        
+        particle.animate([
+            { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+            { transform: `translate(${vx}px, ${vy - 100}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+        ], {
+            duration: 800 + Math.random() * 400,
+            easing: 'cubic-bezier(0, 0.5, 0.5, 1)'
+        });
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => particle.remove(), 1200);
+    }
+}
+
 // Load saved interests from localStorage
 function loadInterests() {
     const saved = localStorage.getItem('leisureInterests');
@@ -124,7 +158,7 @@ function createActivityCard(activity, index) {
     const interest = interests[index] || '';
     
     return `
-        <div class="activity-card" data-index="${index}" data-interest="${interest}">
+        <div class="activity-card" data-index="${index}" data-interest="${interest}" data-category="${activity.category}">
             <div class="activity-header">
                 <span class="activity-emoji">${activity.emoji}</span>
                 <div>
@@ -137,21 +171,21 @@ function createActivityCard(activity, index) {
                         data-interest="interested" 
                         data-index="${index}"
                         title="Interested">
-                    <span class="icon">♥</span>
+                    <span class="icon">💚</span>
                     Yes!
                 </button>
                 <button class="interest-btn ${interest === 'maybe' ? 'selected' : ''}" 
                         data-interest="maybe" 
                         data-index="${index}"
                         title="Maybe">
-                    <span class="icon">◐</span>
+                    <span class="icon">🤔</span>
                     Maybe
                 </button>
                 <button class="interest-btn ${interest === 'not-interested' ? 'selected' : ''}" 
                         data-interest="not-interested" 
                         data-index="${index}"
                         title="Not Interested">
-                    <span class="icon">○</span>
+                    <span class="icon">💔</span>
                     Nope
                 </button>
             </div>
@@ -232,12 +266,19 @@ function handleInterestClick(e) {
     const index = btn.dataset.index;
     const interest = btn.dataset.interest;
     const card = btn.closest('.activity-card');
+    const wasSelected = interests[index] === interest;
     
     // Toggle: if already selected, unselect it
-    if (interests[index] === interest) {
+    if (wasSelected) {
         delete interests[index];
     } else {
         interests[index] = interest;
+        
+        // Confetti for positive selections!
+        if (interest === 'interested') {
+            const rect = btn.getBoundingClientRect();
+            createConfetti(rect.left + rect.width / 2, rect.top);
+        }
     }
     
     // Update button states
@@ -280,4 +321,3 @@ function init() {
 
 // Start the app
 document.addEventListener('DOMContentLoaded', init);
-
