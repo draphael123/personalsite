@@ -170,6 +170,80 @@ main {
     z-index: 1;
 }
 
+/* Backup Section */
+.backup-section {
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.8s ease-out 0.3s both;
+}
+
+.backup-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 245, 147, 0.05);
+    border: 1px solid rgba(0, 245, 147, 0.2);
+    border-radius: 16px;
+}
+
+.backup-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.2rem;
+    border: 2px solid;
+    border-radius: 50px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.export-btn {
+    background: rgba(0, 245, 147, 0.1);
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+}
+
+.export-btn:hover {
+    background: rgba(0, 245, 147, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 245, 147, 0.3);
+}
+
+.import-btn {
+    background: rgba(0, 187, 249, 0.1);
+    border-color: var(--neon-blue);
+    color: var(--neon-blue);
+}
+
+.import-btn:hover {
+    background: rgba(0, 187, 249, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 187, 249, 0.3);
+}
+
+.backup-status {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    animation: fadeIn 0.3s ease;
+}
+
+.backup-status.success {
+    color: var(--neon-green);
+}
+
+.backup-status.error {
+    color: var(--neon-pink);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* Filters Section */
 .filters {
     margin-bottom: 3rem;

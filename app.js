@@ -764,6 +764,100 @@ function handleSuggestionRemove(e) {
     showSuccessMessage(`🗑️ "${removed.name}" removed`);
 }
 
+// Export data to JSON file
+function exportData() {
+    const data = {
+        version: 2,
+        exportDate: new Date().toISOString(),
+        interests: interests,
+        suggestions: userSuggestions
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leisure-explorer-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Show success status
+    const status = document.getElementById('backup-status');
+    const interestedCount = Object.values(interests).filter(v => v === 'interested').length;
+    const maybeCount = Object.values(interests).filter(v => v === 'maybe').length;
+    const nopeCount = Object.values(interests).filter(v => v === 'not-interested').length;
+    status.textContent = `✅ Exported! (${interestedCount} interested, ${maybeCount} maybe, ${nopeCount} nope)`;
+    status.className = 'backup-status success';
+    
+    setTimeout(() => {
+        status.textContent = '';
+    }, 5000);
+}
+
+// Import data from JSON file
+function importData(file) {
+    const reader = new FileReader();
+    const status = document.getElementById('backup-status');
+    
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            // Validate the data
+            if (!data.interests || typeof data.interests !== 'object') {
+                throw new Error('Invalid backup file format');
+            }
+            
+            // Import interests
+            interests = data.interests;
+            saveInterests();
+            
+            // Import suggestions if present
+            if (data.suggestions && Array.isArray(data.suggestions)) {
+                userSuggestions = data.suggestions;
+                saveSuggestions();
+                renderSuggestions();
+            }
+            
+            // Re-render everything
+            renderActivities();
+            updateCounts();
+            
+            // Show success
+            const interestedCount = Object.values(interests).filter(v => v === 'interested').length;
+            const maybeCount = Object.values(interests).filter(v => v === 'maybe').length;
+            const nopeCount = Object.values(interests).filter(v => v === 'not-interested').length;
+            status.textContent = `✅ Imported! (${interestedCount} interested, ${maybeCount} maybe, ${nopeCount} nope)`;
+            status.className = 'backup-status success';
+            
+            // Confetti celebration!
+            const btn = document.getElementById('import-btn');
+            const rect = btn.getBoundingClientRect();
+            createConfetti(rect.left + rect.width / 2, rect.top);
+            
+            showSuccessMessage('🎉 Backup restored successfully!');
+            
+        } catch (error) {
+            status.textContent = '❌ Error: Invalid backup file';
+            status.className = 'backup-status error';
+            console.error('Import error:', error);
+        }
+        
+        setTimeout(() => {
+            status.textContent = '';
+        }, 5000);
+    };
+    
+    reader.onerror = () => {
+        status.textContent = '❌ Error reading file';
+        status.className = 'backup-status error';
+    };
+    
+    reader.readAsText(file);
+}
+
 // Start the app
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -772,4 +866,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Suggestion form handlers
     document.getElementById('suggestion-form').addEventListener('submit', handleSuggestionSubmit);
     document.getElementById('user-suggestions').addEventListener('click', handleSuggestionRemove);
+    
+    // Backup handlers
+    document.getElementById('export-btn').addEventListener('click', exportData);
+    document.getElementById('import-btn').addEventListener('click', () => {
+        document.getElementById('import-file').click();
+    });
+    document.getElementById('import-file').addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            importData(e.target.files[0]);
+            e.target.value = ''; // Reset for future imports
+        }
+    });
 });

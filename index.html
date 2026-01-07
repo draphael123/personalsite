@@ -19,6 +19,19 @@
     </header>
 
     <main>
+        <section class="backup-section">
+            <div class="backup-controls">
+                <button class="backup-btn export-btn" id="export-btn">
+                    <span>📥</span> Export Backup
+                </button>
+                <button class="backup-btn import-btn" id="import-btn">
+                    <span>📤</span> Import Backup
+                </button>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+                <span class="backup-status" id="backup-status"></span>
+            </div>
+        </section>
+
         <section class="filters">
             <h2>Filter by Interest</h2>
             <div class="filter-buttons">
