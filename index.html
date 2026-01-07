@@ -9,28 +9,92 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
 </head>
 <body>
     <div class="background-pattern"></div>
     
     <header>
+        <div class="pwa-install" id="pwa-install" style="display: none;">
+            <button class="install-btn" id="install-btn">
+                <span>📲</span> Install App
+            </button>
+        </div>
         <h1>Leisure Explorer</h1>
         <p class="subtitle">Discover activities that spark your joy</p>
     </header>
 
     <main>
         <section class="backup-section">
+            <div class="backup-header">
+                <h2>💾 Your Data</h2>
+                <span class="last-saved" id="last-saved">Not saved yet</span>
+            </div>
             <div class="backup-controls">
-                <button class="backup-btn export-btn" id="export-btn">
-                    <span>📥</span> Export Backup
+                <button class="backup-btn export-btn" id="export-btn" title="Download backup file">
+                    <span>📥</span> Export
                 </button>
-                <button class="backup-btn import-btn" id="import-btn">
-                    <span>📤</span> Import Backup
+                <button class="backup-btn import-btn" id="import-btn" title="Restore from backup file">
+                    <span>📤</span> Import
+                </button>
+                <button class="backup-btn link-btn" id="link-btn" title="Generate shareable link">
+                    <span>🔗</span> Share Link
+                </button>
+                <button class="backup-btn qr-btn" id="qr-btn" title="Generate QR code">
+                    <span>📱</span> QR Code
+                </button>
+                <button class="backup-btn copy-btn" id="copy-btn" title="Copy selections to clipboard">
+                    <span>📋</span> Copy
+                </button>
+                <button class="backup-btn email-btn" id="email-btn" title="Email backup to yourself">
+                    <span>📧</span> Email
                 </button>
                 <input type="file" id="import-file" accept=".json" style="display: none;">
-                <span class="backup-status" id="backup-status"></span>
             </div>
+            <div class="backup-status" id="backup-status"></div>
         </section>
+
+        <!-- QR Code Modal -->
+        <div class="modal" id="qr-modal">
+            <div class="modal-content">
+                <button class="modal-close" id="qr-modal-close">×</button>
+                <h3>📱 Scan to Restore</h3>
+                <p>Scan this QR code on another device to load your selections</p>
+                <div class="qr-container" id="qr-container"></div>
+                <button class="modal-btn" id="qr-download">Download QR Image</button>
+            </div>
+        </div>
+
+        <!-- Share Link Modal -->
+        <div class="modal" id="link-modal">
+            <div class="modal-content">
+                <button class="modal-close" id="link-modal-close">×</button>
+                <h3>🔗 Shareable Link</h3>
+                <p>Bookmark this link or share it to restore your selections anywhere</p>
+                <div class="link-container">
+                    <input type="text" id="share-link" readonly>
+                    <button class="copy-link-btn" id="copy-link-btn">Copy</button>
+                </div>
+                <div class="link-stats" id="link-stats"></div>
+            </div>
+        </div>
+
+        <!-- Auto-backup Reminder Modal -->
+        <div class="modal" id="reminder-modal">
+            <div class="modal-content reminder-content">
+                <h3>💾 Time to Backup!</h3>
+                <p>You've made <span id="reminder-count">10</span> selections. Would you like to save a backup?</p>
+                <div class="reminder-buttons">
+                    <button class="modal-btn primary" id="reminder-export">Export Backup</button>
+                    <button class="modal-btn secondary" id="reminder-later">Remind Later</button>
+                    <button class="modal-btn tertiary" id="reminder-dismiss">Don't Ask Again</button>
+                </div>
+            </div>
+        </div>
 
         <section class="filters">
             <h2>Filter by Interest</h2>

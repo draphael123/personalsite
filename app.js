@@ -231,9 +231,65 @@ const categoryInfo = {
 
 // State management
 let currentFilter = 'all';
-let currentCategoryFilter = 'all'; // New category filter
-let interests = {}; // Now keyed by activity NAME, not index
+let currentCategoryFilter = 'all';
+let interests = {}; // Keyed by activity NAME
 let userSuggestions = [];
+let selectionCount = 0; // Track selections for auto-reminder
+let lastSaveTime = null;
+let deferredPrompt = null; // For PWA install
+
+// IndexedDB setup for backup storage
+const DB_NAME = 'LeisureExplorerDB';
+const DB_VERSION = 1;
+let db = null;
+
+function initIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains('backups')) {
+                database.createObjectStore('backups', { keyPath: 'id' });
+            }
+        };
+    });
+}
+
+// Save to IndexedDB as additional backup
+function saveToIndexedDB() {
+    if (!db) return;
+    
+    const transaction = db.transaction(['backups'], 'readwrite');
+    const store = transaction.objectStore('backups');
+    
+    store.put({
+        id: 'current',
+        interests: interests,
+        suggestions: userSuggestions,
+        timestamp: new Date().toISOString()
+    });
+}
+
+// Load from IndexedDB if localStorage is empty
+async function loadFromIndexedDB() {
+    if (!db) return null;
+    
+    return new Promise((resolve) => {
+        const transaction = db.transaction(['backups'], 'readonly');
+        const store = transaction.objectStore('backups');
+        const request = store.get('current');
+        
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+    });
+}
 
 // Migration: Convert old index-based interests to name-based interests
 function migrateInterests() {
@@ -324,13 +380,103 @@ function createConfetti(x, y) {
 }
 
 // Load saved interests from localStorage
-function loadInterests() {
+async function loadInterests() {
     migrateInterests(); // Handle migration from old format
+    
+    // If localStorage is empty, try IndexedDB
+    if (Object.keys(interests).length === 0 && db) {
+        const backup = await loadFromIndexedDB();
+        if (backup && backup.interests) {
+            interests = backup.interests;
+            if (backup.suggestions) {
+                userSuggestions = backup.suggestions;
+            }
+            saveInterests(); // Save back to localStorage
+        }
+    }
+    
+    updateLastSaved();
 }
 
-// Save interests to localStorage
+// Save interests to localStorage and IndexedDB
 function saveInterests() {
     localStorage.setItem('leisureInterests', JSON.stringify(interests));
+    lastSaveTime = new Date();
+    localStorage.setItem('lastSaveTime', lastSaveTime.toISOString());
+    updateLastSaved();
+    saveToIndexedDB(); // Backup to IndexedDB
+    
+    // Track selections for auto-reminder
+    selectionCount++;
+    checkAutoReminder();
+}
+
+// Update last saved display
+function updateLastSaved() {
+    const el = document.getElementById('last-saved');
+    if (!el) return;
+    
+    const savedTime = localStorage.getItem('lastSaveTime');
+    if (savedTime) {
+        const date = new Date(savedTime);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        let timeStr;
+        if (diffMins < 1) {
+            timeStr = 'Just now';
+            el.classList.add('recent');
+        } else if (diffMins < 60) {
+            timeStr = `${diffMins}m ago`;
+            el.classList.add('recent');
+        } else if (diffHours < 24) {
+            timeStr = `${diffHours}h ago`;
+            el.classList.remove('recent');
+        } else {
+            timeStr = `${diffDays}d ago`;
+            el.classList.remove('recent');
+        }
+        
+        const totalSelections = Object.keys(interests).length;
+        el.textContent = `✓ Saved ${timeStr} • ${totalSelections} selections`;
+    } else {
+        el.textContent = 'Not saved yet';
+        el.classList.remove('recent');
+    }
+}
+
+// Check if auto-reminder should show
+function checkAutoReminder() {
+    const dismissed = localStorage.getItem('reminderDismissed');
+    const lastReminder = localStorage.getItem('lastReminderTime');
+    
+    if (dismissed === 'true') return;
+    
+    // Show reminder every 15 selections
+    if (selectionCount > 0 && selectionCount % 15 === 0) {
+        // Don't show if reminded in last 5 minutes
+        if (lastReminder) {
+            const lastTime = new Date(lastReminder);
+            const now = new Date();
+            if ((now - lastTime) < 300000) return; // 5 minutes
+        }
+        
+        showReminderModal();
+    }
+}
+
+// Show backup reminder modal
+function showReminderModal() {
+    const modal = document.getElementById('reminder-modal');
+    const countEl = document.getElementById('reminder-count');
+    if (modal && countEl) {
+        countEl.textContent = Object.keys(interests).length;
+        modal.classList.add('show');
+        localStorage.setItem('lastReminderTime', new Date().toISOString());
+    }
 }
 
 // Create activity card HTML
@@ -764,6 +910,160 @@ function handleSuggestionRemove(e) {
     showSuccessMessage(`🗑️ "${removed.name}" removed`);
 }
 
+// Compress data for URL sharing
+function compressData(data) {
+    const json = JSON.stringify(data);
+    // Use base64 encoding
+    return btoa(encodeURIComponent(json));
+}
+
+// Decompress data from URL
+function decompressData(compressed) {
+    try {
+        const json = decodeURIComponent(atob(compressed));
+        return JSON.parse(json);
+    } catch (e) {
+        console.error('Failed to decompress data:', e);
+        return null;
+    }
+}
+
+// Generate shareable link
+function generateShareLink() {
+    const data = {
+        i: interests,
+        s: userSuggestions
+    };
+    const compressed = compressData(data);
+    const url = new URL(window.location.href.split('?')[0]);
+    url.searchParams.set('data', compressed);
+    return url.toString();
+}
+
+// Load data from URL if present
+function loadFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get('data');
+    
+    if (data) {
+        const decompressed = decompressData(data);
+        if (decompressed) {
+            if (decompressed.i) {
+                interests = decompressed.i;
+                saveInterests();
+            }
+            if (decompressed.s) {
+                userSuggestions = decompressed.s;
+                saveSuggestions();
+            }
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            showSuccessMessage('🔗 Selections loaded from link!');
+            return true;
+        }
+    }
+    return false;
+}
+
+// Show share link modal
+function showShareLinkModal() {
+    const modal = document.getElementById('link-modal');
+    const linkInput = document.getElementById('share-link');
+    const statsEl = document.getElementById('link-stats');
+    
+    const link = generateShareLink();
+    linkInput.value = link;
+    
+    const interestedCount = Object.values(interests).filter(v => v === 'interested').length;
+    const maybeCount = Object.values(interests).filter(v => v === 'maybe').length;
+    const nopeCount = Object.values(interests).filter(v => v === 'not-interested').length;
+    statsEl.textContent = `Contains: ${interestedCount} interested, ${maybeCount} maybe, ${nopeCount} nope`;
+    
+    modal.classList.add('show');
+}
+
+// Generate QR code
+function generateQRCode() {
+    const modal = document.getElementById('qr-modal');
+    const container = document.getElementById('qr-container');
+    
+    const link = generateShareLink();
+    
+    // Use QR code API
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(link)}`;
+    
+    container.innerHTML = `<img src="${qrUrl}" alt="QR Code" id="qr-image">`;
+    modal.classList.add('show');
+}
+
+// Download QR code image
+function downloadQRCode() {
+    const img = document.getElementById('qr-image');
+    if (img) {
+        const a = document.createElement('a');
+        a.href = img.src;
+        a.download = 'leisure-explorer-qr.png';
+        a.click();
+    }
+}
+
+// Copy selections to clipboard
+function copyToClipboard() {
+    const interestedActivities = [];
+    const maybeActivities = [];
+    const nopeActivities = [];
+    
+    Object.entries(interests).forEach(([name, status]) => {
+        if (status === 'interested') interestedActivities.push(name);
+        else if (status === 'maybe') maybeActivities.push(name);
+        else if (status === 'not-interested') nopeActivities.push(name);
+    });
+    
+    let text = '🎯 My Leisure Explorer Selections\n\n';
+    
+    if (interestedActivities.length > 0) {
+        text += '💚 INTERESTED:\n';
+        text += interestedActivities.map(a => `  • ${a}`).join('\n');
+        text += '\n\n';
+    }
+    
+    if (maybeActivities.length > 0) {
+        text += '🤔 MAYBE:\n';
+        text += maybeActivities.map(a => `  • ${a}`).join('\n');
+        text += '\n\n';
+    }
+    
+    if (nopeActivities.length > 0) {
+        text += '💔 NOT INTERESTED:\n';
+        text += nopeActivities.map(a => `  • ${a}`).join('\n');
+        text += '\n\n';
+    }
+    
+    text += `📊 Total: ${interestedActivities.length} interested, ${maybeActivities.length} maybe, ${nopeActivities.length} nope`;
+    text += '\n\n🔗 ' + generateShareLink();
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showSuccessMessage('📋 Copied to clipboard!');
+    }).catch(() => {
+        showSuccessMessage('❌ Failed to copy');
+    });
+}
+
+// Email backup
+function emailBackup() {
+    const interestedCount = Object.values(interests).filter(v => v === 'interested').length;
+    const maybeCount = Object.values(interests).filter(v => v === 'maybe').length;
+    const nopeCount = Object.values(interests).filter(v => v === 'not-interested').length;
+    
+    const subject = 'My Leisure Explorer Backup';
+    const body = `Here's my Leisure Explorer backup link:\n\n${generateShareLink()}\n\nSelections: ${interestedCount} interested, ${maybeCount} maybe, ${nopeCount} nope\n\nClick the link to restore your selections!`;
+    
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    showSuccessMessage('📧 Opening email...');
+}
+
 // Export data to JSON file
 function exportData() {
     const data = {
@@ -858,10 +1158,82 @@ function importData(file) {
     reader.readAsText(file);
 }
 
+// Close modal helper
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('show');
+}
+
+// Register service worker for PWA
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('SW registered:', registration.scope);
+            })
+            .catch((error) => {
+                console.log('SW registration failed:', error);
+            });
+    }
+}
+
+// Handle PWA install prompt
+function setupPWAInstall() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install button
+        const installDiv = document.getElementById('pwa-install');
+        if (installDiv) {
+            installDiv.style.display = 'block';
+        }
+    });
+    
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('PWA install outcome:', outcome);
+                deferredPrompt = null;
+                document.getElementById('pwa-install').style.display = 'none';
+            }
+        });
+    }
+}
+
 // Start the app
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize IndexedDB
+    try {
+        await initIndexedDB();
+    } catch (e) {
+        console.log('IndexedDB not available:', e);
+    }
+    
+    // Check for data in URL first
+    const loadedFromURL = loadFromURL();
+    
+    // Initialize main app
     init();
     loadSuggestions();
+    
+    // Re-render if loaded from URL
+    if (loadedFromURL) {
+        renderActivities();
+        updateCounts();
+    }
+    
+    // Update last saved time periodically
+    setInterval(updateLastSaved, 60000);
+    
+    // Register service worker
+    registerServiceWorker();
+    
+    // Setup PWA install
+    setupPWAInstall();
     
     // Suggestion form handlers
     document.getElementById('suggestion-form').addEventListener('submit', handleSuggestionSubmit);
@@ -875,7 +1247,52 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('import-file').addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             importData(e.target.files[0]);
-            e.target.value = ''; // Reset for future imports
+            e.target.value = '';
         }
+    });
+    
+    // Share link handlers
+    document.getElementById('link-btn').addEventListener('click', showShareLinkModal);
+    document.getElementById('link-modal-close').addEventListener('click', () => closeModal('link-modal'));
+    document.getElementById('copy-link-btn').addEventListener('click', () => {
+        const linkInput = document.getElementById('share-link');
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            document.getElementById('copy-link-btn').textContent = 'Copied!';
+            setTimeout(() => {
+                document.getElementById('copy-link-btn').textContent = 'Copy';
+            }, 2000);
+        });
+    });
+    
+    // QR code handlers
+    document.getElementById('qr-btn').addEventListener('click', generateQRCode);
+    document.getElementById('qr-modal-close').addEventListener('click', () => closeModal('qr-modal'));
+    document.getElementById('qr-download').addEventListener('click', downloadQRCode);
+    
+    // Copy and email handlers
+    document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
+    document.getElementById('email-btn').addEventListener('click', emailBackup);
+    
+    // Reminder modal handlers
+    document.getElementById('reminder-export').addEventListener('click', () => {
+        closeModal('reminder-modal');
+        exportData();
+    });
+    document.getElementById('reminder-later').addEventListener('click', () => {
+        closeModal('reminder-modal');
+    });
+    document.getElementById('reminder-dismiss').addEventListener('click', () => {
+        localStorage.setItem('reminderDismissed', 'true');
+        closeModal('reminder-modal');
+        showSuccessMessage('✓ Reminders disabled');
+    });
+    
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+            }
+        });
     });
 });
